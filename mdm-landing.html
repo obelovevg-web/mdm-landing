@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HarmonyMDM — Ассистент по оценке внедрений MDM</title>
+<meta name="description" content="Оцените сложность внедрения MDM за 5 минут. Бот-ассистент задаёт вопросы и выдаёт предварительную оценку трудоёмкости.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--blue:#1A47B8;--blue-light:#2563EB;--bg-light:#F8FAFC;--bg-accent:#E8F0FE;
+--dark:#1A1A2E;--gray:#6B7280;--white:#FFFFFF;--shadow:0 4px 24px rgba(0,0,0,.08);
+--shadow-hover:0 8px 32px rgba(0,0,0,.14);--radius:16px;--transition:.3s ease;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;color:var(--dark);line-height:1.6;background:var(--white)}
+h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;line-height:1.15}
+h2{font-size:clamp(1.6rem,3.5vw,2.25rem);font-weight:700;line-height:1.25}
+h3{font-size:1.25rem;font-weight:700}
+p{font-size:1rem}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+a{text-decoration:none;color:inherit}
+
+/* === NAV === */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,.06);transition:box-shadow var(--transition)}
+.nav.scrolled{box-shadow:0 2px 16px rgba(0,0,0,.08)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{display:flex;align-items:baseline;gap:8px}
+.nav-logo strong{font-size:1.2rem;font-weight:800;color:var(--blue)}
+.nav-logo span{font-size:.8rem;color:var(--gray)}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{font-size:.9rem;font-weight:500;color:var(--dark);position:relative;transition:color var(--transition)}
+.nav-links a:hover{color:var(--blue)}
+.nav-cta{padding:10px 24px;background:linear-gradient(135deg,var(--blue),var(--blue-light));color:#fff!important;border-radius:8px;font-weight:600;font-size:.9rem;transition:opacity var(--transition)}
+.nav-cta:hover{opacity:.9}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+.burger span{display:block;width:24px;height:2px;background:var(--dark);border-radius:2px;transition:var(--transition)}
+.mobile-menu{display:none;position:fixed;inset:0;top:64px;background:var(--white);z-index:99;flex-direction:column;align-items:center;padding-top:40px;gap:24px}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:1.1rem;font-weight:600;color:var(--dark)}
+@media(max-width:768px){
+.nav-links{display:none}
+.burger{display:flex}
+}
+
+/* === HERO === */
+.hero{padding:140px 0 80px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue-light) 100%);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 80%,rgba(255,255,255,.06) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(255,255,255,.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
+.hero-text{color:#fff;position:relative;z-index:1}
+.hero-text h1{margin-bottom:20px}
+.hero-text p{font-size:1.15rem;opacity:.87;margin-bottom:32px;max-width:540px;line-height:1.7}
+.hero-buttons{display:flex;gap:14px;flex-wrap:wrap}
+.btn-white{padding:14px 32px;background:#fff;color:var(--blue);border-radius:8px;font-weight:700;font-size:1rem;border:none;cursor:pointer;transition:var(--transition)}
+.btn-white:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.btn-outline{padding:14px 32px;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.5);border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;transition:var(--transition)}
+.btn-outline:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+.hero-mockup{position:relative;z-index:1}
+.chat-window{background:#1e293b;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);transform:perspective(800px) rotateY(-4deg)}
+.chat-titlebar{padding:12px 16px;background:#0f172a;display:flex;align-items:center;gap:6px}
+.chat-titlebar i{width:10px;height:10px;border-radius:50%;display:block}
+.chat-titlebar i:nth-child(1){background:#ef4444}
+.chat-titlebar i:nth-child(2){background:#f59e0b}
+.chat-titlebar i:nth-child(3){background:#22c55e}
+.chat-messages{padding:20px 16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:82%;padding:12px 16px;border-radius:14px;font-size:.9rem;line-height:1.5}
+.msg.bot{background:var(--bg-accent);color:var(--dark);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+@media(max-width:768px){
+.hero{padding:110px 0 60px}
+.hero-grid{grid-template-columns:1fr;text-align:center}
+.hero-text p{margin-left:auto;margin-right:auto}
+.hero-buttons{justify-content:center}
+.chat-window{transform:none;max-width:360px;margin:0 auto}
+}
+
+/* === SECTIONS === */
+section{padding:80px 0}
+section:nth-child(even){background:var(--bg-light)}
+.section-tag{font-size:.8rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue);text-align:center;margin-bottom:8px}
+.section-title{text-align:center;margin-bottom:12px}
+.section-sub{text-align:center;color:var(--gray);max-width:580px;margin:0 auto 48px;font-size:1.05rem}
+
+/* === CARDS === */
+.cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.card{background:#fff;border-radius:var(--radius);padding:32px 28px;box-shadow:var(--shadow);transition:transform var(--transition),box-shadow var(--transition)}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-hover)}
+.card-icon{width:52px;height:52px;border-radius:14px;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.card-icon svg{width:26px;height:26px;stroke:var(--blue);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card h3{margin-bottom:10px}
+.card p{color:var(--gray);font-size:.95rem;line-height:1.65}
+.card .scenarios{margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb}
+.card .scenarios li{font-size:.85rem;color:var(--gray);margin-bottom:4px;padding-left:14px;position:relative}
+.card .scenarios li::before{content:'→';position:absolute;left:0;color:var(--blue)}
+@media(max-width:768px){.cards-3{grid-template-columns:1fr}}
+
+/* === STEPS === */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;position:relative}
+.steps::before{content:'';position:absolute;top:28px;left:calc(12.5% + 10px);right:calc(12.5% + 10px);height:2px;border-top:2px dashed rgba(26,71,184,.25)}
+.step{text-align:center;position:relative}
+.step-num{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-light));color:#fff;font-size:1.25rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;position:relative;z-index:1}
+.step h3{margin-bottom:8px;font-size:1.05rem}
+.step p{color:var(--gray);font-size:.9rem;max-width:220px;margin:0 auto}
+@media(max-width:768px){
+.steps{grid-template-columns:1fr;gap:32px;padding-left:40px}
+.steps::before{top:0;bottom:0;left:27px;right:auto;width:2px;height:auto;border-top:none;border-left:2px dashed rgba(26,71,184,.25)}
+.step{text-align:left;display:flex;align-items:flex-start;gap:16px}
+.step-num{margin:0;flex-shrink:0;width:44px;height:44px;font-size:1rem}
+.step p{max-width:none}
+}
+
+/* === PARAMS === */
+.params-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.param{display:flex;align-items:flex-start;gap:14px;background:#fff;border-radius:14px;padding:22px 18px;box-shadow:var(--shadow);transition:transform var(--transition),box-shadow var(--transition)}
+.param:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
+.param-icon{width:44px;height:44px;border-radius:12px;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.param-icon svg{width:22px;height:22px;stroke:var(--blue);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.param h4{font-size:.95rem;font-weight:700;margin-bottom:4px}
+.param p{font-size:.82rem;color:var(--gray);line-height:1.5}
+@media(max-width:1024px){.params-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.params-grid{grid-template-columns:1fr}}
+
+/* === DEMO === */
+.demo{background:linear-gradient(135deg,var(--blue),var(--blue-light));padding:80px 0}
+.demo .section-tag,.demo .section-title,.demo .section-sub{color:#fff}
+.demo .section-sub{opacity:.75}
+.demo-box{background:#fff;border-radius:20px;max-width:700px;margin:0 auto;min-height:350px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;box-shadow:0 20px 60px rgba(0,0,0,.2);gap:20px}
+.demo-box p{color:var(--gray);font-size:1.05rem}
+.btn-disabled{padding:12px 28px;background:#e5e7eb;color:#9ca3af;border-radius:8px;font-weight:600;border:none;cursor:default;font-size:.95rem}
+
+/* === CTA === */
+.cta{text-align:center;padding:80px 0}
+.cta h2{margin-bottom:12px}
+.cta p{color:var(--gray);margin-bottom:32px;font-size:1.05rem}
+.btn-primary{padding:16px 48px;background:linear-gradient(135deg,var(--blue),var(--blue-light));color:#fff;border:none;border-radius:12px;font-size:1.1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(26,71,184,.35);transition:var(--transition)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(26,71,184,.45)}
+
+/* === FOOTER === */
+.footer{background:var(--dark);color:#fff;padding:48px 0 32px}
+.footer-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:40px}
+.footer-logo{font-size:1.2rem;font-weight:800;margin-bottom:8px}
+.footer-desc{color:rgba(255,255,255,.5);font-size:.9rem;margin-bottom:12px;line-height:1.6}
+.footer-copy{color:rgba(255,255,255,.35);font-size:.8rem}
+.footer h4{font-size:1rem;font-weight:600;margin-bottom:14px}
+.footer-contacts a{display:block;color:rgba(255,255,255,.6);font-size:.9rem;margin-bottom:8px;transition:color var(--transition)}
+.footer-contacts a:hover{color:#fff}
+@media(max-width:768px){.footer-grid{grid-template-columns:1fr}}
+
+/* === ANIMATE === */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+<div class="container nav-inner">
+<a href="#" class="nav-logo"><strong>HarmonyMDM</strong><span>Ассистент оценки</span></a>
+<div class="nav-links">
+<a href="#problem">Проблема</a>
+<a href="#how-it-works">Как работает</a>
+<a href="#parameters">Параметры</a>
+<a href="#for-whom">Для кого</a>
+<a href="#demo" class="nav-cta">Попробовать</a>
+</div>
+<button class="burger" id="burger" aria-label="Меню">
+<span></span><span></span><span></span>
+</button>
+</div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+<a href="#problem" onclick="closeMenu()">Проблема</a>
+<a href="#how-it-works" onclick="closeMenu()">Как работает</a>
+<a href="#parameters" onclick="closeMenu()">Параметры</a>
+<a href="#for-whom" onclick="closeMenu()">Для кого</a>
+<a href="#demo" onclick="closeMenu()">Попробовать</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+<div class="container hero-grid">
+<div class="hero-text">
+<h1>Оцените сложность внедрения MDM за&nbsp;5&nbsp;минут</h1>
+<p>Бот-ассистент задаёт точные вопросы об инфраструктуре, данных и процессах клиента — и&nbsp;выдаёт предварительную оценку трудоёмкости, которая раньше требовала недели пресейла.</p>
+<div class="hero-buttons">
+<a href="#demo" class="btn-white">Попробовать сейчас</a>
+<a href="#how-it-works" class="btn-outline">Узнать больше</a>
+</div>
+</div>
+<div class="hero-mockup">
+<div class="chat-window">
+<div class="chat-titlebar"><i></i><i></i><i></i></div>
+<div class="chat-messages">
+<div class="msg bot">В какой отрасли работает клиент?</div>
+<div class="msg user">Нефтегаз, 12 филиалов</div>
+<div class="msg bot">Сколько справочников планируется к управлению?</div>
+<div class="msg user">~40 справочников, основные — контрагенты и материалы</div>
+<div class="msg bot">Оценка готова. Сложность: высокая. Ориентировочная трудоёмкость: 1800–2400 ч/ч.</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+<div class="container">
+<div class="section-tag reveal">Знакомая ситуация?</div>
+<h2 class="section-title reveal">Оценка внедрения MDM — это&nbsp;боль</h2>
+<p class="section-sub reveal"></p>
+<div class="cards-3">
+<div class="card reveal">
+<div class="card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+<h3>Недели на предпроект</h3>
+<p>Для первичной оценки нужен опытный консультант, серия встреч и сбор требований — а&nbsp;бюджет нужен уже завтра.</p>
+</div>
+<div class="card reveal">
+<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+<h3>Непрозрачная логика</h3>
+<p>Каждый подрядчик считает по-своему, оценки отличаются в&nbsp;разы, а&nbsp;заказчик не&nbsp;понимает, за&nbsp;что платит.</p>
+</div>
+<div class="card reveal">
+<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+<h3>Зависимость от эксперта</h3>
+<p>Оценка живёт в голове у одного человека — уходит сотрудник, уходит методология.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+<div class="container">
+<div class="section-tag reveal">Процесс</div>
+<h2 class="section-title reveal">Четыре шага до оценки</h2>
+<p class="section-sub reveal"></p>
+<div class="steps reveal">
+<div class="step"><div class="step-num">1</div><div><h3>Запустите бота</h3><p>Откройте ассистента и начните новую сессию оценки — регистрация не&nbsp;нужна.</p></div></div>
+<div class="step"><div class="step-num">2</div><div><h3>Ответьте на вопросы</h3><p>Бот последовательно спросит об отрасли, доменах данных, объёмах, системах и зрелости процессов.</p></div></div>
+<div class="step"><div class="step-num">3</div><div><h3>Получите оценку</h3><p>Ассистент рассчитает сложность, ориентировочную трудоёмкость и ключевые риски внедрения.</p></div></div>
+<div class="step"><div class="step-num">4</div><div><h3>Экспортируйте результат</h3><p>Скачайте отчёт в PDF или отправьте на почту для обсуждения с командой.</p></div></div>
+</div>
+</div>
+</section>
+
+<!-- PARAMETERS -->
+<section id="parameters">
+<div class="container">
+<div class="section-tag reveal">Что под капотом</div>
+<h2 class="section-title reveal">Какие параметры учитывает ассистент</h2>
+<p class="section-sub reveal">Каждый фактор влияет на финальную оценку сложности и трудоёмкости</p>
+<div class="params-grid">
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3"/></svg></div>
+<div><h4>Отрасль</h4><p>Специфика регуляторных требований и типовых процессов</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+<div><h4>Домены данных</h4><p>Контрагенты, продукты, оргструктура, активы и другие</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+<div><h4>Кол-во справочников</h4><p>Общее число справочников и классификаторов в&nbsp;скоупе</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+<div><h4>Объём данных</h4><p>Количество записей и средний размер справочников</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+<div><h4>Текущие системы</h4><p>Какие ERP, CRM и другие системы являются источниками</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+<div><h4>Зрелость процессов</h4><p>Наличие регламентов, ответственных, governance-модели</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+<div><h4>Качество данных</h4><p>Текущий уровень дублей, пропусков и несоответствий</p></div>
+</div>
+<div class="param reveal">
+<div class="param-icon"><svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></div>
+<div><h4>Нормализация</h4><p>Потребность в очистке, дедупликации и стандартизации</p></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FOR WHOM -->
+<section id="for-whom">
+<div class="container">
+<div class="section-tag reveal">Аудитория</div>
+<h2 class="section-title reveal">Кому это полезно</h2>
+<p class="section-sub reveal"></p>
+<div class="cards-3">
+<div class="card reveal">
+<div class="card-icon" style="width:60px;height:60px;border-radius:50%"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3"/></svg></div>
+<h3>Пресейл-консультанты</h3>
+<p>Быстро прикиньте трудоёмкость прямо на встрече с заказчиком, без привлечения архитектора.</p>
+<ul class="scenarios">
+<li>Подготовка КП за один день</li>
+<li>Обоснование бюджета для тендера</li>
+</ul>
+</div>
+<div class="card reveal">
+<div class="card-icon" style="width:60px;height:60px;border-radius:50%"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+<h3>Руководители MDM-проектов</h3>
+<p>Получите первичный скоуп и оценку рисков ещё до старта предпроектного обследования.</p>
+<ul class="scenarios">
+<li>Определение границ пилота</li>
+<li>Оценка ресурсов на старте</li>
+</ul>
+</div>
+<div class="card reveal">
+<div class="card-icon" style="width:60px;height:60px;border-radius:50%"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+<h3>Интеграторы и вендоры</h3>
+<p>Унифицируйте подход к оценке внедрений по всей команде — одна методология, один инструмент.</p>
+<ul class="scenarios">
+<li>Стандартизация пресейла</li>
+<li>Онбординг новых консультантов</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+
+<!-- DEMO -->
+<section class="demo" id="demo">
+<div class="container">
+<div class="section-tag reveal">Попробуйте сейчас</div>
+<h2 class="section-title reveal">Запустите оценку прямо здесь</h2>
+<p class="section-sub reveal">Бот задаст 8–10 вопросов и сформирует отчёт за 5 минут. Регистрация не&nbsp;требуется.</p>
+<div class="demo-box reveal">
+<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+<p>Здесь будет встроен бот-ассистент</p>
+<button class="btn-disabled">Скоро</button>
+</div>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+<div class="container reveal">
+<h2>Готовы попробовать?</h2>
+<p>Получите предварительную оценку внедрения MDM бесплатно</p>
+<a href="#demo"><button class="btn-primary">Начать оценку</button></a>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+<div class="container">
+<div class="footer-grid">
+<div>
+<div class="footer-logo">HarmonyMDM</div>
+<p class="footer-desc">Ассистент по оценке внедрений MDM-систем.<br>Быстрая, прозрачная, воспроизводимая оценка.</p>
+<p class="footer-copy">© 2025 HarmonyMDM. Все права защищены.</p>
+</div>
+<div>
+<h4>Контакты</h4>
+<div class="footer-contacts">
+<a href="mailto:info@harmonymdm.ru">info@harmonymdm.ru</a>
+<a href="https://t.me/harmonymdm" target="_blank" rel="noopener">Telegram: @harmonymdm</a>
+</div>
+</div>
+</div>
+</div>
+</footer>
+
+<script>
+// Nav scroll shadow
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>10)});
+
+// Burger
+const burger=document.getElementById('burger');
+const menu=document.getElementById('mobileMenu');
+burger.addEventListener('click',()=>{menu.classList.toggle('open')});
+function closeMenu(){menu.classList.remove('open')}
+
+// Reveal on scroll
+const reveals=document.querySelectorAll('.reveal');
+const observer=new IntersectionObserver((entries)=>{
+entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})
+},{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+reveals.forEach(el=>observer.observe(el));
+</script>
+</body>
+</html>
